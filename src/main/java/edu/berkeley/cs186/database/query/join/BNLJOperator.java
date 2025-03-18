@@ -68,6 +68,8 @@ public class BNLJOperator extends JoinOperator {
             this.fetchNextLeftBlock();
 
             this.rightSourceIterator = getRightSource().backtrackingIterator();
+
+            this.rightSourceIterator = getRightSource().backtrackingIterator();
             this.rightSourceIterator.markNext();
             this.fetchNextRightPage();
 
@@ -88,6 +90,13 @@ public class BNLJOperator extends JoinOperator {
          */
         private void fetchNextLeftBlock() {
             // TODO(proj3_part1): implement
+            if(!this.leftSourceIterator.hasNext()) return ;
+
+            this.leftBlockIterator = QueryOperator.getBlockIterator(this.leftSourceIterator,getLeftSource().getSchema(),numBuffers-2);
+            this.leftBlockIterator.markNext();
+            this.leftRecord = this.leftBlockIterator.next();
+            //this.leftBlockIterator.reset();
+            //System.out.println(this.leftRecord);
         }
 
         /**
@@ -103,6 +112,12 @@ public class BNLJOperator extends JoinOperator {
          */
         private void fetchNextRightPage() {
             // TODO(proj3_part1): implement
+            if(!this.rightSourceIterator.hasNext()) return ;
+//            this.rightSourceIterator.markNext();
+//            //System.out.println(this.rightSourceIterator.next());
+//            this.rightSourceIterator.reset();
+            this.rightPageIterator = QueryOperator.getBlockIterator(this.rightSourceIterator,getRightSource().getSchema(),1);
+            this.rightPageIterator.markNext();
         }
 
         /**
@@ -115,7 +130,44 @@ public class BNLJOperator extends JoinOperator {
          */
         private Record fetchNextRecord() {
             // TODO(proj3_part1): implement
-            return null;
+            if(leftRecord == null) return null;
+            //System.out.println(leftRecord);
+            Boolean reset = false;
+            while(true){
+                if(this.rightPageIterator.hasNext()){
+                    Record rightRecord = rightPageIterator.next();
+                    if(reset == true){
+                        System.out.println(leftRecord);
+                    }
+
+                    if(compare(leftRecord,rightRecord) == 0){
+                        return leftRecord.concat(rightRecord);
+                    }
+                }
+                else if(leftBlockIterator.hasNext()) {
+                    //System.out.println(this.leftBlockIterator.next());
+                    this.leftRecord = leftBlockIterator.next();
+                    this.rightPageIterator.reset();
+                }
+                else {
+                    if(!rightSourceIterator.hasNext() && !leftSourceIterator.hasNext()) {
+                        return null;
+                    }
+                    if(rightSourceIterator.hasNext()){
+                        this.leftBlockIterator.reset();
+                        this.leftRecord = this.leftBlockIterator.next();
+                        this.fetchNextRightPage();
+
+                        //reset = true;
+                    }
+                    else {
+                        this.rightSourceIterator.reset();
+                        this.fetchNextRightPage();
+                       this.fetchNextLeftBlock();
+                    }
+                }
+            }
+           // return null;
         }
 
         /**

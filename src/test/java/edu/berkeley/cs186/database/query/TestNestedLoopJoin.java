@@ -199,6 +199,7 @@ public class TestNestedLoopJoin {
                     "int", "int", transaction.getTransactionContext());
             checkIOs(0);
             Iterator<Record> outputIterator = joinOperator.iterator();
+            System.out.println(outputIterator);
             assertFalse("too many records", outputIterator.hasNext());
         }
     }

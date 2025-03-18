@@ -171,6 +171,7 @@ public class ExtraNLJTests {
             List<Record> expectedRecords = p.getSecond();
             startCountIOs();
             // Constructing the operator should incur 0 IOs
+            //System.out.println(leftSourceOperator.materialized());
             QueryOperator joinOperator = new PNLJOperator(leftSourceOperator, rightSourceOperator, "joinValue", "joinValue",
                     transaction.getTransactionContext());
             checkIOs(0);
