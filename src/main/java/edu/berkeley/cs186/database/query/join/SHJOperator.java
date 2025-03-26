@@ -69,6 +69,7 @@ public class SHJOperator extends JoinOperator {
         for (Record record: leftRecords) {
             // Partition left records on the chosen column
             DataBox columnValue = record.getValue(getLeftColumnIndex());
+            //System.out.println(columnValue.getInt());
             int hash = HashFunc.hashDataBox(columnValue, 1);
             // modulo to get which partition to use
             int partitionNum = hash % partitions.length;
@@ -76,6 +77,7 @@ public class SHJOperator extends JoinOperator {
                 partitionNum += partitions.length;
             partitions[partitionNum].add(record);
         }
+        //System.out.println("\n");
     }
 
     /**
@@ -87,6 +89,7 @@ public class SHJOperator extends JoinOperator {
      * @param rightRecords An iterable of records from the right relation
      */
     private void buildAndProbe(Partition partition, Iterable<Record> rightRecords) {
+
         if (partition.getNumPages() > this.numBuffers - 2) {
             throw new IllegalArgumentException(
                     "The records in this partition cannot fit in B-2 pages of memory."

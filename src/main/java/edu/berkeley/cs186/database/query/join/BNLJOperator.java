@@ -91,7 +91,6 @@ public class BNLJOperator extends JoinOperator {
         private void fetchNextLeftBlock() {
             // TODO(proj3_part1): implement
             if(!this.leftSourceIterator.hasNext()) return ;
-
             this.leftBlockIterator = QueryOperator.getBlockIterator(this.leftSourceIterator,getLeftSource().getSchema(),numBuffers-2);
             this.leftBlockIterator.markNext();
             this.leftRecord = this.leftBlockIterator.next();
@@ -132,14 +131,9 @@ public class BNLJOperator extends JoinOperator {
             // TODO(proj3_part1): implement
             if(leftRecord == null) return null;
             //System.out.println(leftRecord);
-            Boolean reset = false;
             while(true){
                 if(this.rightPageIterator.hasNext()){
                     Record rightRecord = rightPageIterator.next();
-                    if(reset == true){
-                        System.out.println(leftRecord);
-                    }
-
                     if(compare(leftRecord,rightRecord) == 0){
                         return leftRecord.concat(rightRecord);
                     }
