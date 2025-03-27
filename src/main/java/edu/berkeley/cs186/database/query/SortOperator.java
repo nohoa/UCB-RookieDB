@@ -87,7 +87,18 @@ public class SortOperator extends QueryOperator {
      */
     public Run sortRun(Iterator<Record> records) {
         // TODO(proj3_part1): implement
-        return null;
+        Run currentRun = new Run(this.transaction,getSchema());
+        List<Record> inMemoryRecord = new ArrayList<>();
+
+        while(records.hasNext()){
+            inMemoryRecord.add(records.next());
+        }
+
+        Collections.sort(inMemoryRecord, new RecordComparator());
+        for(Record r : inMemoryRecord){
+           currentRun.add(r);
+        }
+        return currentRun;
     }
 
     /**
@@ -108,7 +119,38 @@ public class SortOperator extends QueryOperator {
     public Run mergeSortedRuns(List<Run> runs) {
         assert (runs.size() <= this.numBuffers - 1);
         // TODO(proj3_part1): implement
-        return null;
+        PriorityQueue<Pair<Record,Integer> > pq = new PriorityQueue<>(new RecordPairComparator());
+        List<Integer> index = new ArrayList<>();
+        List<List<Record> > all_record = new ArrayList<>();
+        Run currentRun = new Run(this.transaction,getSchema());
+        for(Run r : runs){
+             BacktrackingIterator<Record> iter = r.iterator();
+            List<Record> record = new ArrayList<>();
+             while(iter.hasNext()){
+                 record.add(iter.next());
+                 //System.out.println(record.get(record.size()-1));
+             }
+             //System.out.println("\n");
+             all_record.add(record);
+             index.add(0) ;
+        }
+        for(int i = 0 ;i < all_record.size() ;i ++){
+            pq.add(new Pair<>(all_record.get(i).get(0),i));
+           // index.set(i,index.get(i)+1);
+        }
+        while(!pq.isEmpty()){
+            Pair<Record,Integer> pr = pq.peek();
+            pq.poll();
+            int current_index = pr.getSecond();
+            currentRun.add(pr.getFirst());
+            index.set(current_index,index.get(current_index)+1);
+            if(index.get(current_index) < all_record.get(current_index).size()){
+                int next_id =index.get(current_index);
+                pq.add(new Pair<>(all_record.get(current_index).get(next_id),current_index));
+            }
+        }
+
+        return currentRun;
     }
 
     /**
@@ -133,7 +175,48 @@ public class SortOperator extends QueryOperator {
      */
     public List<Run> mergePass(List<Run> runs) {
         // TODO(proj3_part1): implement
-        return Collections.emptyList();
+        PriorityQueue<Pair<Record,Integer> > pq = new PriorityQueue<>(new RecordPairComparator());
+        List<Integer> index = new ArrayList<>();
+        List<List<Record> > all_record = new ArrayList<>();
+        List<Run> all_Run = new ArrayList<>();
+        for(Run r : runs){
+            BacktrackingIterator<Record> iter = r.iterator();
+            List<Record> record = new ArrayList<>();
+            while(iter.hasNext()){
+                record.add(iter.next());
+              //  System.out.println(record.get(record.size()-1));
+            }
+            //System.out.println("\n");
+            all_record.add(record);
+            index.add(0) ;
+        }
+        int curr_stream_value = 0;
+        while(curr_stream_value < runs.size()) {
+            Run currentRun = new Run(this.transaction,getSchema());
+            int num_buffer = this.numBuffers -1;
+            while(curr_stream_value < all_record.size() && num_buffer > 0) {
+                pq.add(new Pair<>(all_record.get(curr_stream_value).get(0), curr_stream_value));
+                // index.set(i,index.get(i)+1);
+                num_buffer--;
+                curr_stream_value ++;
+            }
+            //System.out.println(curr_stream_value);
+
+            while (!pq.isEmpty()) {
+                Pair<Record, Integer> pr = pq.peek();
+                pq.poll();
+                int current_index = pr.getSecond();
+                currentRun.add(pr.getFirst());
+
+                index.set(current_index, index.get(current_index) + 1);
+                if (index.get(current_index) < all_record.get(current_index).size()) {
+                    int next_id = index.get(current_index);
+                    pq.add(new Pair<>(all_record.get(current_index).get(next_id), current_index));
+                }
+            }
+            all_Run.add(currentRun);
+        }
+        return all_Run;
     }
 
     /**
@@ -148,8 +231,23 @@ public class SortOperator extends QueryOperator {
         // Iterator over the records of the relation we want to sort
         Iterator<Record> sourceIterator = getSource().iterator();
 
+        List<Run> runs = new ArrayList<>();
+        //while(sourceIterator.hasNext()){
+        while(sourceIterator.hasNext()){
+            BacktrackingIterator<Record> iterator = QueryOperator.getBlockIterator(sourceIterator,getSchema(),this.numBuffers);
+            if(iterator.hasNext()) {
+                runs.add(sortRun(iterator));
+            }
+        }
+       while(runs.size() > 1){
+
+           List<Run> curr_runs = mergePass(runs);
+           if(curr_runs.size() > 1) runs = curr_runs;
+       }
+       return runs.get(0);
+
         // TODO(proj3_part1): implement
-        return makeRun(); // TODO(proj3_part1): replace this!
+        //return makeRun(); // TODO(proj3_part1): replace this!
     }
 
     /**

@@ -219,4 +219,130 @@ public class TestSortMergeJoin {
         }
     }
 
+    @Test
+    @Category(PublicTests.class)
+    public void testSimpleSortMergeJoin1() {
+        d.setWorkMem(5); // B=5
+        try(Transaction transaction = d.beginTransaction()) {
+            setSourceOperators(
+                    TestUtils.createSourceWithAllTypes(5),
+                    TestUtils.createSourceWithAllTypes(5),
+                    transaction
+            );
+
+            startCountIOs();
+
+            JoinOperator joinOperator = new SortMergeOperator(
+                    leftSourceOperator, rightSourceOperator, "int", "int",
+                    transaction.getTransactionContext());
+            checkIOs(0);
+
+            Iterator<Record> outputIterator = joinOperator.iterator();
+            checkIOs(2 * (1 + (1 + TestSortOperator.NEW_RUN_IOS)));
+
+            int numRecords = 0;
+            Record expected = new Record(true, 1, "a", 1.2f, true, 1, "a", 1.2f);
+
+
+            while (outputIterator.hasNext() && numRecords < 5 * 5) {
+
+                assertEquals("mismatch at record " + numRecords, expected, outputIterator.next());
+                numRecords++;
+            }
+            //System.out.println(outputIterator.next());
+            //System.out.println(outputIterator.hasNext());
+            checkIOs(0);
+
+            assertFalse("too many records", outputIterator.hasNext());
+            outputIterator.hasNext();
+            assertEquals("too few records", 5 * 5, numRecords);
+        }
+    }
+
+    @Test
+    @Category(PublicTests.class)
+    public void testSortMergeJoinUnsortedInputs1()  {
+        d.setWorkMem(3); // B=3
+        try(Transaction transaction = d.beginTransaction()) {
+            transaction.createTable(TestUtils.createSchemaWithAllTypes(), "leftTable");
+            transaction.createTable(TestUtils.createSchemaWithAllTypes(), "rightTable");
+            pinPage(1, 1);
+            pinPage(1, 2);
+
+            Record r1 = TestUtils.createRecordWithAllTypesWithValue(1);
+            Record r2 = TestUtils.createRecordWithAllTypesWithValue(2);
+            Record r3 = TestUtils.createRecordWithAllTypesWithValue(3);
+            Record r4 = TestUtils.createRecordWithAllTypesWithValue(4);
+
+            Record expectedRecord1 = r1.concat(r1);
+            Record expectedRecord2 = r2.concat(r2);
+            Record expectedRecord3 = r3.concat(r3);
+            Record expectedRecord4 = r4.concat(r4);
+
+            List<Record> leftTableRecords = new ArrayList<>();
+            List<Record> rightTableRecords = new ArrayList<>();
+            for (int i = 0; i < 8; i++) {
+                Record r;
+                if (i % 4 == 0) r = r1;
+                else if (i % 4 == 1) r = r2;
+                else if (i % 4 == 2) r = r3;
+                else r = r4;
+                leftTableRecords.add(r);
+                rightTableRecords.add(r);
+            }
+//            for(Record r : leftTableRecords) {
+//                System.out.println(r.getValues());
+//            }
+//            System.out.println("\n");
+//            for(Record r : rightTableRecords) {
+//                System.out.println(r.getValues());
+//            }
+//            System.out.println("\n");
+            Collections.shuffle(leftTableRecords, new Random(10));
+            Collections.shuffle(rightTableRecords, new Random(20));
+            for (int i = 0; i < 8; i++) {
+                transaction.insert("leftTable", leftTableRecords.get(i));
+                transaction.insert("rightTable", rightTableRecords.get(i));
+            }
+
+            setSourceOperators(
+                    new SequentialScanOperator(transaction.getTransactionContext(), "leftTable"),
+                    new SequentialScanOperator(transaction.getTransactionContext(), "rightTable")
+            );
+
+            startCountIOs();
+
+            JoinOperator joinOperator = new SortMergeOperator(leftSourceOperator, rightSourceOperator, "int",
+                    "int",
+                    transaction.getTransactionContext());
+            checkIOs(0);
+
+            Iterator<Record> outputIterator = joinOperator.iterator();
+            //checkIOs(2 * (2 + (2 + TestSortOperator.NEW_RUN_IOS)));
+
+            int numRecords = 0;
+            Record expectedRecord;
+
+            while (outputIterator.hasNext() && numRecords < 4 * 4) {
+                if (numRecords < (4 * 4 / 4)) {
+                    expectedRecord = expectedRecord1;
+                } else if (numRecords < (4 * 4 / 2)) {
+                    expectedRecord = expectedRecord2;
+                } else if (numRecords < 4 * 4 - (4 * 4 / 4)) {
+                    expectedRecord = expectedRecord3;
+                } else {
+                    expectedRecord = expectedRecord4;
+                }
+                Record r = outputIterator.next();
+                assertEquals("mismatch at record " + numRecords, expectedRecord, r);
+                numRecords++;
+            }
+            //checkIOs(0);
+
+            assertFalse("too many records", outputIterator.hasNext());
+            assertEquals("too few records", 4 * 4, numRecords);
+        }
+    }
+
+
 }
