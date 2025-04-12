@@ -577,6 +577,26 @@ public class QueryPlan {
         QueryOperator minOp = new SequentialScanOperator(this.transaction, table);
 
         // TODO(proj3_part2): implement
+        int minIOCost = minOp.estimateIOCost();
+        int skipIndex = -1 ;
+        for (int i = 0; i < this.selectPredicates.size(); i++) {
+            SelectPredicate p = this.selectPredicates.get(i);
+            // ignore if the selection predicate is for a different table
+            if (!p.tableName.equals(table)) continue;
+            boolean indexExists = this.transaction.indexExists(table, p.column);
+            boolean canScan = p.operator != PredicateOperator.NOT_EQUALS;
+            if (indexExists && canScan) {
+                QueryOperator indexOperator = new IndexScanOperator(this.transaction,table,p.column,p.operator,p.value);
+                if(indexOperator.estimateIOCost() < minIOCost){
+                    minIOCost = indexOperator.estimateIOCost();
+                    skipIndex = i;
+                    minOp = indexOperator;
+                }
+            }
+        }
+
+         minOp  =  addEligibleSelections(minOp,skipIndex);
+
         return minOp;
     }
 

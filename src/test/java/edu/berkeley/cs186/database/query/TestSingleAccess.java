@@ -128,6 +128,7 @@ public class TestSingleAccess {
 
             // the selection `int = 9` should have been pushed down on top of
             // the sequential scan.
+
             assertTrue(op.isSelect());
             assertTrue(op.getSource().isSequentialScan());
         }
