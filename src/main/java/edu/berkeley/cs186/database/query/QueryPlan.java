@@ -586,7 +586,7 @@ public class QueryPlan {
             boolean indexExists = this.transaction.indexExists(table, p.column);
             boolean canScan = p.operator != PredicateOperator.NOT_EQUALS;
             if (indexExists && canScan) {
-                QueryOperator indexOperator = new IndexScanOperator(this.transaction,table,p.column,p.operator,p.value);
+               QueryOperator indexOperator = new IndexScanOperator(this.transaction,table,p.column,p.operator,p.value);
                 if(indexOperator.estimateIOCost() < minIOCost){
                     minIOCost = indexOperator.estimateIOCost();
                     skipIndex = i;
@@ -650,6 +650,7 @@ public class QueryPlan {
             Map<Set<String>, QueryOperator> prevMap,
             Map<Set<String>, QueryOperator> pass1Map) {
         Map<Set<String>, QueryOperator> result = new HashMap<>();
+
         // TODO(proj3_part2): implement
         // We provide a basic description of the logic you have to implement:
         // For each set of tables in prevMap
@@ -666,6 +667,68 @@ public class QueryPlan {
         //      calculate the cheapest join with the new table (the one you
         //      fetched an operator for from pass1Map) and the previously joined
         //      tables. Then, update the result map if needed.
+
+
+        //System.out.println(pass1Map);
+        for(Set<String> st : prevMap.keySet()) {
+           // System.out.println(st + " " + prevMap.get(st));
+            for(JoinPredicate predicate : this.joinPredicates) {
+                //  System.out.println(predicate);
+                String leftTable = predicate.leftTable;
+                String leftColumn = predicate.leftColumn;
+                String rightTable = predicate.rightTable;
+                String rightColumn = predicate.rightColumn;
+                QueryOperator curr_table;
+                QueryOperator join_table;
+                Set<String> set = new HashSet<>();
+                Set<String> s1 = new HashSet<>();
+                if (st.contains(leftTable) && !st.contains(rightTable)) {
+//                    System.out.println(rightTable);
+//                    System.out.println(leftTable);
+//                    System.out.println(st + " " + prevMap.get(st));
+//                    System.out.println(predicate);
+                    set.add(rightTable);
+                    curr_table = pass1Map.get(set);
+                    join_table = minCostJoinType(prevMap.get(st), curr_table, leftColumn, rightColumn);
+                    s1.addAll(st);
+                    s1.add(rightTable);
+
+                    if (!result.containsKey(s1)) {
+                        result.put(s1, join_table);
+                    } else {
+                        if (result.get(s1).estimateIOCost() > join_table.estimateIOCost()) {
+                            result.put(s1, join_table);
+                        }
+                    }
+                } else if (st.contains(rightTable) && !st.contains(leftTable)) {
+//                   System.out.println(rightTable);
+//                    System.out.println(leftTable);
+//                    System.out.println(st + " " + prevMap.get(st));
+//                    System.out.println(predicate);
+                    set.add(leftTable);
+                    curr_table = pass1Map.get(set);
+                    join_table = minCostJoinType(prevMap.get(st), curr_table, rightColumn, leftColumn);
+                   // System.out.println(join_table);
+                    s1.addAll(st);
+                    s1.add(leftTable);
+                    if (!result.containsKey(s1)) {
+                        result.put(s1, join_table);
+                    } else {
+                        if (result.get(s1).estimateIOCost() > join_table.estimateIOCost()) {
+                            result.put(s1, join_table);
+                        }
+                    }
+                } else {
+                    continue;
+                }
+                //System.out.println("\n");
+            }
+        }
+
+//        for(Set<String> st : result.keySet()) {
+//            System.out.println(st + " " + result.get(st));
+//        }
+//        System.out.println("\n");
         return result;
     }
 
@@ -715,7 +778,9 @@ public class QueryPlan {
         // Set the final operator to the lowest cost operator from the last
         // pass, add group by, project, sort and limit operators, and return an
         // iterator over the final operator.
-        return this.executeNaive(); // TODO(proj3_part2): Replace this!
+
+
+        return this.finalOperator.iterator(); // TODO(proj3_part2): Replace this!
     }
 
     // EXECUTE NAIVE ///////////////////////////////////////////////////////////

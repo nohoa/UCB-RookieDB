@@ -113,6 +113,7 @@ public class TestOptimizationJoins {
             // - {table1, table2}
             // - {table2, table3}
             Map<Set<String>, QueryOperator> pass2Map = query.minCostJoins(pass1Map, pass1Map);
+
             assertEquals(2, pass2Map.size());
             Set<String> set12 = new HashSet<>();
             set12.add("table1");
