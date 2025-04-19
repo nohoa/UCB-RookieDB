@@ -778,7 +778,40 @@ public class QueryPlan {
         // Set the final operator to the lowest cost operator from the last
         // pass, add group by, project, sort and limit operators, and return an
         // iterator over the final operator.
+        List<String> tableName = this.tableNames;
+        //System.out.println(tableName.size());
+        Map<Set<String>, QueryOperator> result = new HashMap<>();
+        Map<Set<String>, QueryOperator> initialResult = new HashMap<>();
+        for(String tables : tableName){
+                QueryOperator query = minCostSingleAccess(tables);
+                Set<String> tableSet  = new HashSet<>();
+                tableSet.add(tables);
+                result.put(tableSet,query);
+                initialResult.put(tableSet,query);
+        }
+        int size = result.size() -1 ;
+        for(int i = 0 ;i < size ;i ++){
+            result = minCostJoins(result,initialResult);
+        }
 
+        this.finalOperator = new SequentialScanOperator(
+                this.transaction,
+                this.tableNames.get(0)
+        );
+        int min_cost = -1;
+        for(Set<String> record : result.keySet()){
+            if(min_cost == -1){
+                min_cost = result.get(record).estimateIOCost();
+                this.finalOperator = result.get(record);
+            }
+            else {
+                if(result.get(record).estimateIOCost() < min_cost){
+                    min_cost  = result.get(record).estimateIOCost();
+                    this.finalOperator = result.get(record) ;
+                }
+            }
+        }
+        //System.out.println(this.finalOperator);
 
         return this.finalOperator.iterator(); // TODO(proj3_part2): Replace this!
     }
