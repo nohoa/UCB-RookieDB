@@ -1,5 +1,7 @@
 package edu.berkeley.cs186.database.concurrency;
 
+import edu.berkeley.cs186.database.databox.Type;
+
 /**
  * Utility methods to track the relationships between different lock types.
  */
@@ -22,8 +24,31 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
+        if(a == LockType.NL){
+            return true ;
+        }
+        else if(a == LockType.S){
+            if(b == LockType.SIX || b == LockType.X || b == LockType.IX) return false ;
+            return true ;
 
-        return false;
+        }
+        else if(a == LockType.X){
+            if(b == LockType.NL ) return true;
+            return false ;
+        }
+        else if(a == LockType.IS){
+            if(b == LockType.X) return false;
+            return true;
+        }
+        else if(a == LockType.IX){
+            if(b == LockType.X || b == LockType.S || b == LockType.SIX) return false;
+            return true;
+        }
+        else {
+            if(b == LockType.NL || b == LockType.IS) return true ;
+            return false;
+        }
+
     }
 
     /**
@@ -54,8 +79,27 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
-
-        return false;
+        if(childLockType == LockType.NL) return true ;
+        else if(childLockType == LockType.S){
+            if(parentLockType == LockType.IS || parentLockType == LockType.IX) return true;
+            return false ;
+        }
+        else if(childLockType == LockType.X){
+            if(parentLockType == LockType.IX) return true;
+            return false ;
+        }
+        else if(childLockType == LockType.IX){
+            if(parentLockType != LockType.IX) return false;
+            return true ;
+        }
+        else if(childLockType == LockType.IS){
+            if(parentLockType == childLockType || parentLockType == LockType.IX) return true ;
+            return false;
+        }
+        else {
+            if(parentLockType == LockType.IX) return true;
+            return false;
+        }
     }
 
     /**
@@ -69,6 +113,23 @@ public enum LockType {
             throw new NullPointerException("null lock type");
         }
         // TODO(proj4_part1): implement
+        if(substitute == required) return true ;
+        if(required == LockType.NL) return false;
+        if(required == LockType.IS){
+            if(substitute == LockType.IX) return true;
+            return false ;
+        }
+        else if(required == LockType.IX){
+            if(substitute == LockType.SIX) return true;
+            return false;
+        }
+        else if(required == LockType.SIX) return false ;
+        else if(required == LockType.S){
+            if(substitute == LockType.X || substitute == LockType.SIX) return true ;
+        }
+        else if(required == LockType.X){
+            return false;
+        }
 
         return false;
     }
