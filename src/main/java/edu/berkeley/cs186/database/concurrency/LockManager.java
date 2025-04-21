@@ -225,9 +225,73 @@ public class LockManager {
         // You may modify any part of this method. You are not required to keep
         // all your code within the given synchronized block and are allowed to
         // move the synchronized block elsewhere if you wish.
+
         boolean shouldBlock = false;
         synchronized (this) {
-            
+            // Acquire lock
+            boolean exist = false;
+            for(ResourceName release : releaseNames){
+                if(release.equals(name)){
+                    exist = true;
+                }
+            }
+            if(getLockType(transaction,name) != LockType.NL){
+                if(!exist) throw new DuplicateLockRequestException("Duplicate lock");
+            }
+            if(exist){
+
+                ResourceEntry resourceEntry = getResourceEntry(name);
+                for (ResourceName releaseName : releaseNames) {
+                    resourceEntry = getResourceEntry(releaseName);
+                    if (resourceEntry.locks.isEmpty()) {
+                        throw new NoLockHeldException("No lock execption");
+                    }
+
+                    Lock lock = transactionLocks.get(transaction.getTransNum()).get(0);
+                    resourceEntry.releaseLock(lock);
+                    transaction.unblock();
+                }
+
+                resourceEntry = getResourceEntry(name);
+
+                boolean compatible = resourceEntry.checkCompatible(lockType,transaction.getTransNum());
+                Lock lock = new Lock(name,lockType,transaction.getTransNum());
+                if(!compatible){
+                    shouldBlock = true ;
+                    transaction.prepareBlock();
+                    resourceEntry.addToQueue(new LockRequest(transaction,lock), false);
+                }
+                else {
+                    resourceEntry.grantOrUpdateLock(lock);
+                }
+
+            }
+            else {
+                ResourceEntry resourceEntry = getResourceEntry(name);
+
+                boolean compatible = resourceEntry.checkCompatible(lockType, transaction.getTransNum());
+                Lock lock = new Lock(name, lockType, transaction.getTransNum());
+                if (!compatible) {
+                    shouldBlock = true;
+                    transaction.prepareBlock();
+                    resourceEntry.addToQueue(new LockRequest(transaction, lock), false);
+                } else {
+                    resourceEntry.grantOrUpdateLock(lock);
+                }
+                if (!shouldBlock) {
+                    for (ResourceName releaseName : releaseNames) {
+                        resourceEntry = getResourceEntry(releaseName);
+                        if (resourceEntry.locks.isEmpty()) {
+                            throw new NoLockHeldException("No lock execption");
+                        }
+
+                        lock = transactionLocks.get(transaction.getTransNum()).get(0);
+                        resourceEntry.releaseLock(lock);
+                        transaction.unblock();
+                    }
+                }
+            }
+
         }
         if (shouldBlock) {
             transaction.block();
