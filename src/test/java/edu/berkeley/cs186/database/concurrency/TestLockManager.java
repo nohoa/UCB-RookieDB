@@ -39,6 +39,7 @@ public class TestLockManager {
     static boolean holds(LockManager lockman, TransactionContext transaction, ResourceName name,
                          LockType type) {
         List<Lock> locks = lockman.getLocks(transaction);
+
         if (locks == null) {
             return false;
         }
