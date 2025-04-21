@@ -59,6 +59,7 @@ public class LockManager {
          */
         public boolean checkCompatible(LockType lockType, long except) {
             // TODO(proj4_part1): implement
+
             for(Lock currLock : locks){
                 if(currLock.transactionNum == except) continue;
                 if(!LockType.compatible(lockType, currLock.lockType)) return false ;
@@ -157,8 +158,6 @@ public class LockManager {
                     }
                 }
             }
-           // System.out.println(locks);
-            //System.out.println(waitingQueue);
             // TODO(proj4_part1): implement
             return;
         }
@@ -331,7 +330,6 @@ public class LockManager {
             else {
                 resourceEntry.grantOrUpdateLock(lock);
             }
-            //System.out.println(resourceEntry.toString());
         }
         if (shouldBlock) {
             transaction.block();
@@ -357,10 +355,32 @@ public class LockManager {
             if(entry.locks.isEmpty()) {
                 throw new NoLockHeldException("No lock execption");
             }
-
             Lock lock = transactionLocks.get(transaction.getTransNum()).get(0);
-            entry.releaseLock(lock);
+            entry.releaseLock(lock) ;
+
+            List<Lock> currentLocks = entry.locks;
+            while(!entry.waitingQueue.isEmpty()){
+                LockRequest request = entry.waitingQueue.peek();
+                boolean haveRequest = false;
+                for(int i = 0 ;i < currentLocks.size() ;i ++) {
+                    if (request.transaction.getTransNum() == currentLocks.get(i).transactionNum){
+                            haveRequest = true ;
+                            transactionLocks.get(request.transaction.getTransNum()).remove(currentLocks.get(i));
+                            transactionLocks.get(request.transaction.getTransNum()).add(request.lock);
+                            currentLocks.set(i,request.lock);
+                            entry.waitingQueue.pop();
+                            if(entry.waitingQueue.isEmpty()){
+                                request.transaction.unblock();
+                            }
+                            break;
+                    }
+                }
+                if(!haveRequest){
+                    break;
+                }
+            }
             transaction.unblock();
+
 
         }
     }
@@ -393,7 +413,42 @@ public class LockManager {
         // You may modify any part of this method.
         boolean shouldBlock = false;
         synchronized (this) {
-            
+            ResourceEntry resourceEntry = getResourceEntry(name);
+            LockType currentType = getLockType(transaction,name);
+            List<Lock> allLocks = getLocks(transaction);
+            if(allLocks.isEmpty()){
+                throw new NoLockHeldException("no current Lock");
+            }
+            if(currentType == newLockType){
+                throw new DuplicateLockRequestException("duplicate lock");
+            }
+            boolean canPromote = LockType.substitutable(newLockType,newLockType) ;
+            if(canPromote){
+                boolean doesCompatible = resourceEntry.checkCompatible(newLockType,transaction.getTransNum());
+                if(doesCompatible){
+                    Lock lock = new Lock(name,newLockType,transaction.getTransNum());
+                    List<Lock> all_Lock = getLocks(name);
+                    for(int i = 0 ;i < all_Lock.size();i ++){
+                        if(all_Lock.get(i).transactionNum == transaction.getTransNum()){
+                            resourceEntry.locks.set(i,lock);
+                            Long trans_id = transaction.getTransNum();
+                            transactionLocks.get(trans_id).remove(all_Lock.get(i));
+                            transactionLocks.get(trans_id).add(lock);
+                            break;
+                        }
+                    }
+                }
+                else {
+                    Lock lock = new Lock(name,newLockType,transaction.getTransNum());
+                    resourceEntry.addToQueue(new LockRequest(transaction,lock), false);
+                    shouldBlock = true ;
+                    transaction.prepareBlock();
+                }
+            }
+            else {
+                throw new InvalidLockException("can't promote");
+            }
+
         }
         if (shouldBlock) {
             transaction.block();
