@@ -418,4 +418,24 @@ public class TestLockContext {
         assertEquals(0, dbLockContext.getNumChildren(t1));
     }
 
+    @Test
+    @Category(PublicTests.class)
+    public void NoEscalate() {
+        TransactionContext t1 = transactions[1];
+
+        LockContext r0 = dbLockContext;
+        LockContext r1 = tableLockContext;
+        LockContext r2 = pageLockContext;
+
+        r0.acquire(t1, LockType.IX);
+        r1.acquire(t1,LockType.IX);
+        r2.acquire(t1,LockType.X);
+        r1.escalate(t1);
+        assertTrue(TestLockManager.holds(lockManager, t1, r1.getResourceName(), LockType.X));
+        assertEquals(1,r0.getNumChildren(t1));
+        assertEquals(0,r1.getNumChildren(t1));
+        assertEquals(0,r2.getNumChildren(t1));
+    }
+
 }
+

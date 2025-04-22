@@ -113,6 +113,17 @@ public class LockContext {
     }
 
 
+    void relseEscalateLock(TransactionContext transaction,LockContext parent,int value ){
+        if(parent == null) return ;
+        Long transNo = transaction.getTransNum();
+        parent.numChildLocks.put(transNo,parent.numChildLocks.get(transNo)-value);
+        if(parent.numChildLocks.get(transNo) == 0){
+            parent.numChildLocks.remove(transNo);
+        }
+        relseLock(transaction,parent.parent);
+    }
+
+
     /**
      * Acquire a `lockType` lock, for transaction `transaction`.
      *
@@ -128,18 +139,20 @@ public class LockContext {
             throws InvalidLockException, DuplicateLockRequestException {
 
         // TODO(proj4_part2): implement
+       // System.out.println(lockman.getLocks(transaction));
         if(readonly){
             throw new UnsupportedOperationException("readonly");
         }
-        if(lockType == LockType.NL){
+        if(lockType == LockType.NL && !lockman.getLocks(transaction).isEmpty()){
             throw new InvalidLockException("Exception Lock");
         }
         if(lockman.getLockType(transaction,name).equals(lockType))
             throw new DuplicateLockRequestException("A lock is already held by the transaction");
 
         if(parent != null){
-
             LockType par = parent.getExplicitLockType(transaction);
+           // System.out.println(par);
+            //System.out.println(lockType);
             if(!LockType.canBeParentLock(par,lockType)){
                 throw  new InvalidLockException("Exception Lock");
             }
@@ -255,12 +268,13 @@ public class LockContext {
         if(newLockType == LockType.SIX){
             List<ResourceName> descent = sisDescendants(transaction);
             descent.add(name);
+
             lockman.acquireAndRelease(transaction,name,newLockType,descent);
             for(ResourceName name : descent){
                 relseLock(transaction,fromResourceName(lockman,name).parent);
             }
         }
-         lockman.promote(transaction,name,newLockType);
+         else lockman.promote(transaction,name,newLockType);
 
     }
 
@@ -330,6 +344,7 @@ public class LockContext {
         release.add(name);
         //System.out.println(fin);
         if(!all_fixed)lockman.acquireAndRelease(transaction,name,fin,release);
+        if(numChildLocks.containsKey(transaction.getTransNum())) relseEscalateLock(transaction,fromResourceName(lockman,name).parent,numChildLocks.get(transaction.getTransNum()));
         numChildLocks.clear();
         return;
     }
@@ -460,14 +475,14 @@ public class LockContext {
     }
 
     private boolean isAncestor(LockContext current, LockContext parent){
-        if(current == null) return false;
-        if(parent == null) return false;
-        LockContext p = current.parent;
-        while(p!=null){
-            if(p.equals(parent)) return true;
-            p=p.parent;
-        }
-        return false;
+        current = current.parent;
+       while(current != null){
+           if(current.equals(parent)){
+               return true;
+           }
+           current = current.parent;
+       }
+       return false;
     }
 
 }
