@@ -205,10 +205,9 @@ public class TestDatabaseLockingIntegration {
     @Category(PublicTests.class)
     public void testTableScan() {
         String tableName = "testTable1";
-        createTable(tableName, 4);
+        createTable(tableName, 1);
 
         lockManager.startLog();
-
         try(Transaction t1 = beginTransaction()) {
             Iterator<Record> r = t1.getTransactionContext().getRecordIterator(tableName);
             while (r.hasNext()) {
@@ -226,7 +225,7 @@ public class TestDatabaseLockingIntegration {
     @Category(PublicTests.class)
     public void testSortedScanNoIndexLocking() {
         String tableName = "testTable1";
-        createTable(tableName, 1);
+        createTable(tableName, 4);
 
         lockManager.startLog();
 

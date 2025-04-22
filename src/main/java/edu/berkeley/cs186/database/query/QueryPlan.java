@@ -812,6 +812,10 @@ public class QueryPlan {
             }
         }
         //System.out.println(this.finalOperator);
+        this.addGroupBy();
+        this.addProject();
+        this.addSort();
+        this.addLimit();
 
         return this.finalOperator.iterator(); // TODO(proj3_part2): Replace this!
     }

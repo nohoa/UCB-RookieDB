@@ -84,6 +84,7 @@ public class TestBasicQuery {
             int count = 0;
             while (queryOutput.hasNext()) {
                 Record r = queryOutput.next();
+
                 assertEquals(r.size(), 1);
                 assertEquals(new IntDataBox(count), r.getValue(0));
                 count++;

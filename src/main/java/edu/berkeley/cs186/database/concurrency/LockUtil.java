@@ -5,6 +5,7 @@ import edu.berkeley.cs186.database.TransactionContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * LockUtil is a declarative layer which simplifies multigranularity lock
@@ -56,9 +57,10 @@ public class LockUtil {
         Collections.reverse(contextList);
         if(requestType == LockType.S){
             boolean is_start_S = false ;
-            if(lockContext.getExplicitLockType(transaction) == LockType.S){
+            if(lockContext.getEffectiveLockType(transaction) == LockType.S){
                 is_start_S = true ;
             }
+            boolean does_X = false;
             for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
                 LockContext parent = contextList.get(i);
                 LockType par = parent.getExplicitLockType(transaction);
@@ -68,6 +70,13 @@ public class LockUtil {
                 else if(par == LockType.IX) {
                     if(i == 0) continue ;
                    if(is_start_S) parent.promote(transaction,LockType.SIX);
+                }
+                else if(par == LockType.X) {
+                    does_X = true;
+                }
+                else if(par == LockType.S){
+                    if(does_X) parent.promote(transaction,LockType.SIX);
+                    return ;
                 }
             }
             if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL){
@@ -88,6 +97,9 @@ public class LockUtil {
                 if(par == LockType.IS) parent.promote(transaction,LockType.IX);
                 else if(par == LockType.NL) {
                     parent.acquire(transaction,LockType.IX);
+                }
+                else if(par == LockType.X){
+                    return ;
                 }
             }
                 if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL) contextList.get(contextList.size()-1).acquire(transaction,LockType.X);

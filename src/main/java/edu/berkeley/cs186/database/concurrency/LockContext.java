@@ -149,6 +149,9 @@ public class LockContext {
         if(parent != null){
             LockType par = parent.getExplicitLockType(transaction);
             if(!LockType.canBeParentLock(par,lockType)){
+                System.out.println(par);
+                System.out.println(lockType);
+                System.out.println(lockman.getLocks(transaction));
                 throw  new InvalidLockException("Exception Lock");
             }
         }
