@@ -66,7 +66,10 @@ public class LockManager {
             }
             Iterator<LockRequest> dq = waitingQueue.iterator();
             while(dq.hasNext()){
-                if(!LockType.compatible(lockType,dq.next().lock.lockType)) return false;
+                LockRequest currentRequest = dq.next();
+                if(!LockType.compatible(lockType,currentRequest.lock.lockType)) {
+                    if(currentRequest.transaction.getTransNum() != except) return false;
+                }
             }
             return true ;
         }
@@ -146,7 +149,6 @@ public class LockManager {
                 }
                 else {
                     LockRequest curr = requests.next();
-
                     boolean possible = checkCompatible(curr.lock.lockType, curr.transaction.getTransNum());
                     if(possible){
                         waitingQueue.pop();
@@ -158,6 +160,7 @@ public class LockManager {
                     }
                 }
             }
+
             // TODO(proj4_part1): implement
             return;
         }
@@ -357,28 +360,6 @@ public class LockManager {
             }
             Lock lock = transactionLocks.get(transaction.getTransNum()).get(0);
             entry.releaseLock(lock) ;
-
-            List<Lock> currentLocks = entry.locks;
-            while(!entry.waitingQueue.isEmpty()){
-                LockRequest request = entry.waitingQueue.peek();
-                boolean haveRequest = false;
-                for(int i = 0 ;i < currentLocks.size() ;i ++) {
-                    if (request.transaction.getTransNum() == currentLocks.get(i).transactionNum){
-                            haveRequest = true ;
-                            transactionLocks.get(request.transaction.getTransNum()).remove(currentLocks.get(i));
-                            transactionLocks.get(request.transaction.getTransNum()).add(request.lock);
-                            currentLocks.set(i,request.lock);
-                            entry.waitingQueue.pop();
-                            if(entry.waitingQueue.isEmpty()){
-                                request.transaction.unblock();
-                            }
-                            break;
-                    }
-                }
-                if(!haveRequest){
-                    break;
-                }
-            }
             transaction.unblock();
 
 
@@ -440,7 +421,7 @@ public class LockManager {
                 }
                 else {
                     Lock lock = new Lock(name,newLockType,transaction.getTransNum());
-                    resourceEntry.addToQueue(new LockRequest(transaction,lock), false);
+                    resourceEntry.addToQueue(new LockRequest(transaction,lock), true);
                     shouldBlock = true ;
                     transaction.prepareBlock();
                 }
