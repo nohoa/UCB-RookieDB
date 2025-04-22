@@ -358,7 +358,14 @@ public class LockManager {
             if(entry.locks.isEmpty()) {
                 throw new NoLockHeldException("No lock execption");
             }
+            List<Lock> all_Lock = transactionLocks.get(transaction.getTransNum());
             Lock lock = transactionLocks.get(transaction.getTransNum()).get(0);
+            for(Lock l : all_Lock){
+                if(l.name.equals(name)){
+                    lock = l ;
+                    break;
+                }
+            }
             entry.releaseLock(lock) ;
             transaction.unblock();
 

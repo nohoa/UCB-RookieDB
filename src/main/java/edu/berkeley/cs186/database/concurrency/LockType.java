@@ -85,7 +85,7 @@ public enum LockType {
             return false ;
         }
         else if(childLockType == LockType.X){
-            if(parentLockType == LockType.IX) return true;
+            if(parentLockType == LockType.IX || parentLockType == LockType.SIX) return true;
             return false ;
         }
         else if(childLockType == LockType.IX){
@@ -116,7 +116,7 @@ public enum LockType {
         if(substitute == required) return true ;
         if(required == LockType.NL) return false;
         if(required == LockType.IS){
-            if(substitute == LockType.IX) return true;
+            if(substitute == LockType.IX || substitute == LockType.SIX) return true;
             return false ;
         }
         else if(required == LockType.IX){
