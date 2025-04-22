@@ -96,6 +96,25 @@ public class LockContext {
     public void acquire(TransactionContext transaction, LockType lockType)
             throws InvalidLockException, DuplicateLockRequestException {
         // TODO(proj4_part2): implement
+        if(readonly){
+            throw new UnsupportedOperationException("readonly");
+        }
+        if(lockType == LockType.NL){
+            throw new InvalidLockException("Exception Lock");
+        }
+        if(lockman.getLockType(transaction,name).equals(lockType))
+            throw new DuplicateLockRequestException("A lock is already held by the transaction");
+
+        if(parent != null){
+            List<Lock> lockList = lockman.getLocks(transaction);
+            boolean compatible = true;
+
+            LockType par = parent.getExplicitLockType(transaction);
+            if(!LockType.canBeParentLock(par,lockType)){
+                throw  new InvalidLockException("Exception Lock");
+            }
+        }
+            lockman.acquire(transaction, name, lockType);
 
         return;
     }
@@ -190,7 +209,7 @@ public class LockContext {
     public LockType getExplicitLockType(TransactionContext transaction) {
         if (transaction == null) return LockType.NL;
         // TODO(proj4_part2): implement
-        return LockType.NL;
+        return lockman.getLockType(transaction,name);
     }
 
     /**

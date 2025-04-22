@@ -422,7 +422,7 @@ public class LockManager {
             if(currentType == newLockType){
                 throw new DuplicateLockRequestException("duplicate lock");
             }
-            boolean canPromote = LockType.substitutable(newLockType,newLockType) ;
+            boolean canPromote = LockType.substitutable(newLockType,currentType) ;
             if(canPromote){
                 boolean doesCompatible = resourceEntry.checkCompatible(newLockType,transaction.getTransNum());
                 if(doesCompatible){

@@ -356,14 +356,14 @@ public class TestLockContext {
 
         runner.run(2, () -> pageLockContext.acquire(t3, LockType.S));
 
-        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t1));
-        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t2));
-        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t3));
-        assertEquals(LockType.NL, pageLockContext.getEffectiveLockType(t4));
         assertEquals(LockType.NL, pageLockContext.getExplicitLockType(t1));
         assertEquals(LockType.NL, pageLockContext.getExplicitLockType(t2));
         assertEquals(LockType.S, pageLockContext.getExplicitLockType(t3));
         assertEquals(LockType.NL, pageLockContext.getExplicitLockType(t4));
+        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t1));
+        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t2));
+        assertEquals(LockType.S, pageLockContext.getEffectiveLockType(t3));
+        assertEquals(LockType.NL, pageLockContext.getEffectiveLockType(t4));
 
         runner.joinAll();
     }
