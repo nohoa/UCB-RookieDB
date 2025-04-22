@@ -221,6 +221,19 @@ public class LockContext {
     public LockType getEffectiveLockType(TransactionContext transaction) {
         if (transaction == null) return LockType.NL;
         // TODO(proj4_part2): implement
+        if(parent != null){
+            List<Lock> par_Lock = parent.lockman.getLocks(transaction);
+            boolean SIX_Lock = false  ;
+            for(Lock l : par_Lock){
+                if(l.lockType == LockType.S || l.lockType == LockType.X){
+                    return l.lockType;
+                }
+                else if(l.lockType == LockType.SIX){
+                    SIX_Lock = true ;
+                }
+            }
+            if(SIX_Lock) return LockType.S;
+        }
         return LockType.NL;
     }
 
