@@ -81,7 +81,7 @@ public enum LockType {
         // TODO(proj4_part1): implement
         if(childLockType == LockType.NL) return true ;
         else if(childLockType == LockType.S){
-            if(parentLockType == LockType.IS || parentLockType == LockType.IX) return true;
+            if(parentLockType == LockType.IS || parentLockType == LockType.IX|| parentLockType == LockType.S) return true;
             return false ;
         }
         else if(childLockType == LockType.X){

@@ -139,29 +139,21 @@ public class LockContext {
             throws InvalidLockException, DuplicateLockRequestException {
 
         // TODO(proj4_part2): implement
-       // System.out.println(lockman.getLocks(transaction));
-        if(readonly){
-            throw new UnsupportedOperationException("readonly");
-        }
+        if(readonly&&(lockType.equals(LockType.IX)||lockType.equals(LockType.X))) throw new UnsupportedOperationException("Context cannot be modified");
         if(lockType == LockType.NL && !lockman.getLocks(transaction).isEmpty()){
             throw new InvalidLockException("Exception Lock");
         }
-        if(lockman.getLockType(transaction,name).equals(lockType))
+        if(getExplicitLockType(transaction).equals(lockType))
             throw new DuplicateLockRequestException("A lock is already held by the transaction");
 
         if(parent != null){
             LockType par = parent.getExplicitLockType(transaction);
-           // System.out.println(par);
-            //System.out.println(lockType);
             if(!LockType.canBeParentLock(par,lockType)){
                 throw  new InvalidLockException("Exception Lock");
             }
         }
             lockman.acquire(transaction, name, lockType);
             updateNumChild(transaction,lockType,parent);
-
-
-
         return;
     }
 
@@ -179,12 +171,11 @@ public class LockContext {
     public void release(TransactionContext transaction)
             throws NoLockHeldException, InvalidLockException {
         // TODO(proj4_part2): implement
-        if(readonly){
-            throw new UnsupportedOperationException("Readonly");
-        }
+        if(readonly && !(lockman.getLockType(transaction,name).equals(LockType.S)||lockman.getLockType(transaction,name).equals(LockType.IS))) throw new UnsupportedOperationException("Context is read only");
         boolean exist = false;
         for(Lock l : lockman.getLocks(transaction)){
-            if(l.name == name){
+
+            if(l.name.equals(name)){
                 exist = true;
                 break;
             }
@@ -241,7 +232,7 @@ public class LockContext {
         }
         List<Lock> all_Lock = lockman.getLocks(transaction);
         for(Lock l : all_Lock){
-            if(l.lockType == newLockType&& l.name == name){
+            if(l.lockType.equals(newLockType) && l.name.equals(name)){
                 throw new DuplicateLockRequestException("Lock already held");
             }
         }
@@ -368,20 +359,33 @@ public class LockContext {
     public LockType getEffectiveLockType(TransactionContext transaction) {
         if (transaction == null) return LockType.NL;
         // TODO(proj4_part2): implement
-        if(parent != null){
-            List<Lock> par_Lock = parent.lockman.getLocks(transaction);
-            boolean SIX_Lock = false  ;
-            for(Lock l : par_Lock){
-                if(l.lockType == LockType.S || l.lockType == LockType.X){
-                    return l.lockType;
+        LockType parentLockType;
+        parentLockType = getExplicitLockType(transaction);
+        if(parentLockType.equals(LockType.S)||parentLockType.equals(LockType.X)) return parentLockType;
+        LockContext p = parent;
+//        parentLockType = p.getExplicitLockType(transaction);
+        while(p!=null)
+        {
+            parentLockType = p.getExplicitLockType(transaction);
+            if(hasSIXAncestor(transaction)){
+                if(p.getExplicitLockType(transaction).equals(LockType.IX)){
+                    parentLockType = LockType.SIX;
                 }
-                else if(l.lockType == LockType.SIX){
-                    SIX_Lock = true ;
+                else{
+                    parentLockType = LockType.S;
                 }
+                break;
             }
-            if(SIX_Lock) return LockType.S;
+            if(parentLockType.equals(LockType.S)||parentLockType.equals(LockType.X)) break;
+            p = p.parent;
+
         }
-        return LockType.NL;
+        if(parentLockType.equals(LockType.SIX)
+                || parentLockType.equals(LockType.X)
+                || parentLockType.equals(LockType.S)) return parentLockType;
+        else{
+            return LockType.NL;
+        }
     }
 
     /**

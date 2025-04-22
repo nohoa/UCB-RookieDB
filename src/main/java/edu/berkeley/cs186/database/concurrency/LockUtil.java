@@ -70,7 +70,9 @@ public class LockUtil {
                    if(is_start_S) parent.promote(transaction,LockType.SIX);
                 }
             }
-            if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL)contextList.get(contextList.size()-1).acquire(transaction,LockType.S);
+            if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL){
+                contextList.get(contextList.size()-1).acquire(transaction,LockType.S);
+            }
             else if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.IX){
                 contextList.get(contextList.size()-1).promote(transaction,LockType.SIX);
             }
@@ -84,13 +86,12 @@ public class LockUtil {
                 LockContext parent = contextList.get(i);
                 LockType par = parent.getExplicitLockType(transaction);
                 if(par == LockType.IS) parent.promote(transaction,LockType.IX);
-                else {
+                else if(par == LockType.NL) {
                     parent.acquire(transaction,LockType.IX);
                 }
             }
-
-                    if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL) contextList.get(contextList.size()-1).acquire(transaction,LockType.X);
-                   else  if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.S )contextList.get(contextList.size()-1).promote(transaction,LockType.X);
+                if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL) contextList.get(contextList.size()-1).acquire(transaction,LockType.X);
+                else  if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.S )contextList.get(contextList.size()-1).promote(transaction,LockType.X);
         }
         return;
     }
