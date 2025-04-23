@@ -158,66 +158,118 @@ public class SortMergeOperator extends JoinOperator {
 
 
 
-            while(true) {
-                if(compare(leftRecord,rightRecord) > 0){
-                    marked = false;
-//                    System.out.println(leftRecord);
-//                    System.out.println(rightRecord);
-                    while(rightIterator.hasNext() && compare(leftRecord,rightRecord) >0){
-                        rightRecord = rightIterator.next();
-                        rightIterator.markPrev();
-                    }
-                }
-                else if(compare(leftRecord,rightRecord) <0){
-                    marked = false;
-                    leftRecord = leftIterator.next();
-                    rightIterator.reset();
-                    rightRecord =rightIterator.next();
-                }
-                else if(compare(leftRecord,rightRecord) == 0){
-//                    while(rightIterator.hasNext()){
-//                        System.out.println(rightIterator.next());
+//            while(true) {
+//                if(compare(leftRecord,rightRecord) > 0){
+//                    marked = false;
+////                    System.out.println(leftRecord);
+////                    System.out.println(rightRecord);
+//                    while(rightIterator.hasNext() && compare(leftRecord,rightRecord) >0){
+//                        rightRecord = rightIterator.next();
+//                        rightIterator.markPrev();
 //                    }
+//                }
+//                else if(compare(leftRecord,rightRecord) <0){
+//                    marked = false;
+//                    leftRecord = leftIterator.next();
 //                    rightIterator.reset();
-                    Record currLeft = leftRecord;
-                    Record currRight = rightRecord;
-//                    System.out.println(currLeft);
-//                    System.out.println(currRight);
-                    if(leftIterator.hasNext()){
-
-                        if(rightIterator.hasNext()){
-                            currRight = rightRecord;
-                            rightRecord = rightIterator.next();
-                            return currLeft.concat(currRight);
-                        }
-                        else {
-                            rightIterator.reset();
-                            currRight = rightRecord;
-                            rightRecord =rightIterator.next();
-                            currLeft = leftRecord;
-                            leftRecord = leftIterator.next();
-                            return currLeft.concat(currRight);
-                        }
-
-                    }
-                    else {
-                        if(!marked){
-                            marked = true;
-                            rightIterator.reset();
-                        }
-                        while(rightIterator.hasNext()) {
-                            if(compare(leftRecord,rightRecord) == 0){
-                                currRight = rightRecord;
-                                rightRecord = rightIterator.next();
-                                return currLeft.concat(currRight);
-
-                            }
-                        }
-                        return null ;
-                    }
-                }
-            }
+//                    rightRecord =rightIterator.next();
+//                }
+//                else if(compare(leftRecord,rightRecord) == 0){
+//                    Record currLeft = leftRecord;
+//                    Record currRight = rightRecord;
+//                    if(leftIterator.hasNext()){
+//                        if(rightIterator.hasNext()){
+//                            currRight = rightRecord;
+//                            rightRecord = rightIterator.next();
+//                            return currLeft.concat(currRight);
+//                        }
+//                        else {
+//                            rightIterator.reset();
+//                            currRight = rightRecord;
+//                            rightRecord =rightIterator.next();
+//                            currLeft = leftRecord;
+//                            leftRecord = leftIterator.next();
+//                            return currLeft.concat(currRight);
+//                        }
+//
+//                    }
+//                    else {
+//
+//                        if(!marked){
+//                            marked = true;
+//                            rightIterator.reset();
+//                        }
+//                        while(rightIterator.hasNext()) {
+//                            if(compare(leftRecord,rightRecord) == 0){
+//                                currRight = rightRecord;
+//                                rightRecord = rightIterator.next();
+//                                return currLeft.concat(currRight);
+//
+//                            }
+//                        }
+//                        return null ;
+//                    }
+//                }
+//            }
             //return null;
+           while(true){
+//               System.out.println(leftRecord);
+//               System.out.println(rightRecord);
+//               System.out.println("\n");
+               if(leftRecord == null) return null;
+               if(compare(leftRecord,rightRecord) < 0){
+                   if(marked){
+                       marked = false;
+                       if(leftIterator.hasNext()) leftRecord = leftIterator.next();
+                       else leftRecord = null;
+                       rightIterator.reset();
+                       if(rightIterator.hasNext()) rightRecord = rightIterator.next();
+                       else leftRecord = null;
+                   }
+                   else {
+                       if(rightIterator.hasNext()) {
+                           rightRecord = rightIterator.next();
+                       }
+                       else {
+                           rightIterator.reset();
+                           rightRecord = rightIterator.next();
+                           if(leftIterator.hasNext()) leftRecord = leftIterator.next();
+                           else leftRecord = null;
+                       }
+                   }
+               }
+               else if(compare(leftRecord,rightRecord) > 0){
+                   while(rightIterator.hasNext()){
+                       rightRecord = rightIterator.next();
+                       if(compare(rightRecord,leftRecord) >= 0){
+                           rightIterator.markPrev();
+                           break;
+                       }
+                   }
+                   if(compare(rightRecord,leftRecord) < 0) leftRecord = null;
+               }
+               else {
+                   Record currLeft = leftRecord;
+                   Record currRight = rightRecord;
+                   marked = true ;
+                   if(rightIterator.hasNext()){
+                       rightRecord = rightIterator.next();
+                       return currLeft.concat(currRight);
+                   }
+                   else {
+                       rightIterator.reset();
+                       if(!rightIterator.hasNext()) leftRecord = null;
+                       if(leftRecord == null){
+                           return currLeft.concat(currRight);
+                       }
+                       rightRecord = rightIterator.next();
+                       if(leftIterator.hasNext()) leftRecord = leftIterator.next();
+                       else leftRecord = null;
+                       return currLeft.concat(currRight);
+                   }
+               }
+           }
+
         }
 
         @Override

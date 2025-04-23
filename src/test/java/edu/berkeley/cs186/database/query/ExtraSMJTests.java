@@ -266,7 +266,8 @@ public class ExtraSMJTests {
                     transaction.getTransactionContext());
             Iterator<Record> outputIterator = joinOperator.iterator();
             for (int i = 0; outputIterator.hasNext() && i < expectedRecords.size(); i++) {
-                viz.add(expectedRecords.get(i), outputIterator.next(), i);
+                Record op = outputIterator.next();
+                viz.add(expectedRecords.get(i), op, i);
             }
             StringBuilder problems = new StringBuilder(viz.getProblems());
             if (outputIterator.hasNext()) {
