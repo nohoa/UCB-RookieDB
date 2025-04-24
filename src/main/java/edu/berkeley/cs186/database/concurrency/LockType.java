@@ -28,8 +28,8 @@ public enum LockType {
             return true ;
         }
         else if(a == LockType.S){
-            if(b == LockType.SIX || b == LockType.X || b == LockType.IX) return false ;
-            return true ;
+            if(b == LockType.IS || b == LockType.S || b == LockType.NL) return true;
+            return false;
 
         }
         else if(a == LockType.X){
@@ -81,7 +81,7 @@ public enum LockType {
         // TODO(proj4_part1): implement
         if(childLockType == LockType.NL) return true ;
         else if(childLockType == LockType.S){
-            if(parentLockType == LockType.IS || parentLockType == LockType.IX|| parentLockType == LockType.S||parentLockType == LockType.X) return true;
+            if(parentLockType == LockType.IS || parentLockType == LockType.IX) return true;
             return false ;
         }
         else if(childLockType == LockType.X){
@@ -89,8 +89,8 @@ public enum LockType {
             return false ;
         }
         else if(childLockType == LockType.IX){
-            if(parentLockType != LockType.IX) return false;
-            return true ;
+            if(parentLockType == LockType.IX || parentLockType == LockType.SIX ) return true;
+            return false ;
         }
         else if(childLockType == LockType.IS){
             if(parentLockType == childLockType || parentLockType == LockType.IX) return true ;

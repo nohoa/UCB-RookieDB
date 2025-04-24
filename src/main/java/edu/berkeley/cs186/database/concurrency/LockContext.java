@@ -149,15 +149,11 @@ public class LockContext {
         if(parent != null){
             LockType par = parent.getExplicitLockType(transaction);
             if(!LockType.canBeParentLock(par,lockType)){
-                System.out.println(par);
-                System.out.println(lockType);
-                System.out.println(lockman.getLocks(transaction));
                 throw  new InvalidLockException("Exception Lock");
             }
         }
             lockman.acquire(transaction, name, lockType);
             updateNumChild(transaction,lockType,parent);
-        return;
     }
 
     /**
@@ -258,7 +254,6 @@ public class LockContext {
                 throw new InvalidLockException("Can't promote");
             }
         }
-        //System.out.println(lockman.getLocks(transaction));
         if(newLockType == LockType.SIX){
             List<ResourceName> descent = sisDescendants(transaction);
             descent.add(name);
@@ -336,7 +331,7 @@ public class LockContext {
             }
         }
         release.add(name);
-        //System.out.println(fin);
+
         if(!all_fixed)lockman.acquireAndRelease(transaction,name,fin,release);
         if(numChildLocks.containsKey(transaction.getTransNum())) relseEscalateLock(transaction,fromResourceName(lockman,name).parent,numChildLocks.get(transaction.getTransNum()));
         numChildLocks.clear();

@@ -45,9 +45,8 @@ public class LockUtil {
         LockContext parentContext = lockContext.parentContext();
         LockType effectiveLockType = lockContext.getEffectiveLockType(transaction);
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
-
+        if(explicitLockType == requestType) return ;
         // TODO(proj4_part2): implement
-
         List<LockContext> contextList = new ArrayList<LockContext>();
         contextList.add(lockContext);
         while(parentContext != null){
@@ -61,14 +60,26 @@ public class LockUtil {
                 is_start_S = true ;
             }
             boolean does_X = false;
+            boolean does_SIX = false ;
+
+            for(int i = 0 ;i < contextList.size()  ;i ++){
+                LockContext parent = contextList.get(i);
+                LockType par = parent.getExplicitLockType(transaction);
+
+                if(par == LockType.SIX){
+                    does_SIX = true ;
+                }
+            }
             for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
                 LockContext parent = contextList.get(i);
                 LockType par = parent.getExplicitLockType(transaction);
                 if(par == LockType.NL){
-                    parent.acquire(transaction,LockType.IS);
+                    if(does_SIX) continue;
+                    else parent.acquire(transaction,LockType.IS);
                 }
                 else if(par == LockType.IX) {
-                    if(i == 0) continue ;
+
+                   // if(i == 0) continue ;
                    if(is_start_S) parent.promote(transaction,LockType.SIX);
                 }
                 else if(par == LockType.X) {
@@ -79,8 +90,9 @@ public class LockUtil {
                     return ;
                 }
             }
+
             if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.NL){
-                contextList.get(contextList.size()-1).acquire(transaction,LockType.S);
+                 contextList.get(contextList.size()-1).acquire(transaction,LockType.S);
             }
             else if(contextList.get(contextList.size()-1).getExplicitLockType(transaction) == LockType.IX){
                 contextList.get(contextList.size()-1).promote(transaction,LockType.SIX);

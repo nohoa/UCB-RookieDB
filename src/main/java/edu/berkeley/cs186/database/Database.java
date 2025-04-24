@@ -934,15 +934,18 @@ public class Database implements AutoCloseable {
                 List<Lock> locklist = lockManager.getLocks(this);
                 List<LockContext> lockcontextlist = new ArrayList<>();
                 for(Lock lock:locklist){
-                    lockcontextlist.add(LockContext.fromResourceName(lockManager, lock.name));
+                    if(lock.lockType == LockType.S || lock.lockType == LockType.X){
+                        lockcontextlist.add(LockContext.fromResourceName(lockManager, lock.name));
+                    }
                 }
-                Collections.reverse(lockcontextlist);
-
+                for(Lock lock:locklist){
+                    if(lock.lockType != LockType.S && lock.lockType != LockType.X){
+                        lockcontextlist.add(LockContext.fromResourceName(lockManager, lock.name));
+                    }
+                }
                 for(LockContext context:lockcontextlist){
                     context.release(getTransaction());
                 }
-                //System.out.println("end");
-                return;
             } catch (Exception e) {
                 // There's a chance an error message from your release phase
                 // logic can get suppressed. This guarantees that the stack
