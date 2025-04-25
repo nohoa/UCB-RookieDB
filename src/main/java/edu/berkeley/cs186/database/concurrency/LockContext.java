@@ -105,11 +105,14 @@ public class LockContext {
     void relseLock(TransactionContext transaction,LockContext parent){
         if(parent == null) return ;
         Long transNo = transaction.getTransNum();
-            parent.numChildLocks.put(transNo,parent.numChildLocks.get(transNo)-1);
-            if(parent.numChildLocks.get(transNo) == 0){
-                parent.numChildLocks.remove(transNo);
+            if(parent.numChildLocks.containsKey(transNo))  {
+                //System.out.println(parent.numChildLocks.get(transNo));
+                relseLock(transaction,parent.parent);
+                parent.numChildLocks.put(transNo,parent.numChildLocks.get(transNo)-1);
+                if(parent.numChildLocks.get(transNo) == 0){
+                    parent.numChildLocks.remove(transNo);
+                }
             }
-            relseLock(transaction,parent.parent);
     }
 
 

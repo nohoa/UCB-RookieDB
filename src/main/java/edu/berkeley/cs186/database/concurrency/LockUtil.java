@@ -67,8 +67,9 @@ public class LockUtil {
                 LockType par = parent.getExplicitLockType(transaction);
 
                 if(par == LockType.SIX){
-                    does_SIX = true ;
+                    return ;
                 }
+                if(par == LockType.S || par == LockType.X) return ;
             }
             for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
                 LockContext parent = contextList.get(i);
@@ -103,6 +104,13 @@ public class LockUtil {
         }
         else if(requestType == LockType.NL) ;
         else {
+            for(int i = 0 ;i < contextList.size() ;i ++ ) {
+                LockContext parent = contextList.get(i);
+                LockType par = parent.getExplicitLockType(transaction);
+                if(par == LockType.X) {
+                    return ;
+                }
+            }
             for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
                 LockContext parent = contextList.get(i);
                 LockType par = parent.getExplicitLockType(transaction);
@@ -111,6 +119,10 @@ public class LockUtil {
                     parent.acquire(transaction,LockType.IX);
                 }
                 else if(par == LockType.X){
+                    return ;
+                }
+                else if(par == LockType.S){
+                    contextList.get(i).promote(transaction,LockType.X);
                     return ;
                 }
             }

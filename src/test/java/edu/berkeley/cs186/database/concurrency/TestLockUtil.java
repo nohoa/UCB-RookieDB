@@ -23,11 +23,7 @@ public class TestLockUtil {
     private TransactionContext transaction;
     private LockContext dbContext;
     private LockContext tableContext;
-    private LockContext tableContext1;
     private LockContext[] pageContexts;
-    private LockContext[] pageContexts1;
-    private LockContext tableContext2;
-    private LockContext[] pageContexts2;
 
     // 1 second per test
     @Rule
@@ -53,19 +49,6 @@ public class TestLockUtil {
         for (int i = 0; i < pageContexts.length; ++i) {
             pageContexts[i] = tableContext.childContext((long) i);
         }
-
-        tableContext1 = dbContext.childContext("table2");
-        pageContexts1 = new LockContext[8];
-        for (int i = 0; i < pageContexts1.length; ++i) {
-            pageContexts1[i] = tableContext1.childContext((long) i);
-        }
-
-        tableContext2 = dbContext.childContext("table3");
-        pageContexts2 = new LockContext[8];
-        for (int i = 0; i < pageContexts2.length; ++i) {
-            pageContexts2[i] = tableContext2.childContext((long) i);
-        }
-
         TransactionContext.setTransaction(transaction);
     }
 
@@ -189,19 +172,14 @@ public class TestLockUtil {
          * IX on database and IX on table1 as well.
          */
         lockManager.startLog();
-        LockUtil.ensureSufficientLockHeld(pageContexts[2], LockType.S);
-//        assertEquals(Arrays.asList(
-//                "acquire 0 database IX",
-//                "acquire 0 database/table1 IX",
-//                "acquire 0 database/table1/3 X"
-//        ), lockManager.log);
-//        lockManager.clearLog();
+        LockUtil.ensureSufficientLockHeld(pageContexts[3], LockType.X);;
+        assertEquals(Arrays.asList(
+                "acquire 0 database IX",
+                "acquire 0 database/table1 IX",
+                "acquire 0 database/table1/3 X"
+        ), lockManager.log);
+        lockManager.clearLog();
 
-//        LockUtil.ensureSufficientLockHeld(pageContexts2[2], LockType.S);
-        LockUtil.ensureSufficientLockHeld(tableContext1, LockType.X);
-        LockUtil.ensureSufficientLockHeld(dbContext, LockType.S);
-//        LockUtil.ensureSufficientLockHeld(tableContext, LockType.S);
-        //LockUtil.ensureSufficientLockHeld(tableContext1, LockType.S);
         /**
          * Afterwards, requesting S on page 4 should be possible using the
          * existing IX lock on table1 without any other acquisitions.
@@ -212,10 +190,10 @@ public class TestLockUtil {
          *             /     \
          *        X(page3) S(page4)
          */
-//        LockUtil.ensureSufficientLockHeld(pageContexts[4], LockType.S);
-//        assertEquals(Collections.singletonList(
-//                "acquire 0 database/table1/4 S"
-//        ), lockManager.log);
+        LockUtil.ensureSufficientLockHeld(pageContexts[4], LockType.S);
+        assertEquals(Collections.singletonList(
+                "acquire 0 database/table1/4 S"
+        ), lockManager.log);
     }
 
     @Test
@@ -242,7 +220,6 @@ public class TestLockUtil {
         assertEquals(Collections.singletonList(
                 "acquire-and-release 0 database/table1 SIX [database/table1]"
         ), lockManager.log);
-
     }
 
     @Test
