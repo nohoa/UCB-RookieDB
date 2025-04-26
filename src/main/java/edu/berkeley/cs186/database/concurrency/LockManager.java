@@ -139,29 +139,26 @@ public class LockManager {
          * granted, the transaction that made the request can be unblocked.
          */
         private void processQueue() {
+            // TODO(proj4_part1): implement
             Iterator<LockRequest> requests = waitingQueue.iterator();
-            while(requests.hasNext()){
-                if(locks.isEmpty()){
-                    LockRequest curr = requests.next() ;
+            while(requests.hasNext()) {
+                if (locks.isEmpty()) {
+                    LockRequest curr = requests.next();
                     grantOrUpdateLock(curr.lock);
                     curr.transaction.unblock();
                     waitingQueue.pop();
-                }
-                else {
+                } else {
                     LockRequest curr = requests.next();
                     boolean possible = checkCompatible(curr.lock.lockType, curr.transaction.getTransNum());
-                    if(possible){
+                    if (possible) {
                         waitingQueue.pop();
                         curr.transaction.unblock();
                         grantOrUpdateLock(curr.lock);
-                    }
-                    else {
+                    } else {
                         break;
                     }
                 }
             }
-
-            // TODO(proj4_part1): implement
             return;
         }
 

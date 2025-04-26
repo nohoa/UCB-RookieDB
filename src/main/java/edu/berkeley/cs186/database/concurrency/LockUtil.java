@@ -47,6 +47,7 @@ public class LockUtil {
         LockType explicitLockType = lockContext.getExplicitLockType(transaction);
         if(explicitLockType == requestType) return ;
         // TODO(proj4_part2): implement
+        // TODO(proj4_part2) add any helper methods you want
         List<LockContext> contextList = new ArrayList<LockContext>();
         contextList.add(lockContext);
         while(parentContext != null){
@@ -54,6 +55,7 @@ public class LockUtil {
             parentContext = parentContext.parentContext();
         }
         Collections.reverse(contextList);
+
         if(requestType == LockType.S){
             boolean is_start_S = false ;
             if(lockContext.getEffectiveLockType(transaction) == LockType.S){
@@ -111,10 +113,21 @@ public class LockUtil {
                     return ;
                 }
             }
+            boolean does_S  = false ;
             for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
                 LockContext parent = contextList.get(i);
                 LockType par = parent.getExplicitLockType(transaction);
-                if(par == LockType.IS) parent.promote(transaction,LockType.IX);
+                if(par == LockType.S){
+                    does_S = true ;
+                }
+            }
+            for(int i = 0 ;i < contextList.size()-1 ;i ++ ){
+                LockContext parent = contextList.get(i);
+                LockType par = parent.getExplicitLockType(transaction);
+                if(par == LockType.IS) {
+                    if(does_S) parent.promote(transaction,LockType.SIX);
+                    else parent.promote(transaction,LockType.IX);
+                }
                 else if(par == LockType.NL) {
                     parent.acquire(transaction,LockType.IX);
                 }
@@ -132,5 +145,4 @@ public class LockUtil {
         return;
     }
 
-    // TODO(proj4_part2) add any helper methods you want
 }

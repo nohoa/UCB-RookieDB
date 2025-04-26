@@ -140,23 +140,27 @@ public class LockContext {
      */
     public void acquire(TransactionContext transaction, LockType lockType)
             throws InvalidLockException, DuplicateLockRequestException {
-
         // TODO(proj4_part2): implement
-        if(readonly&&(lockType.equals(LockType.IX)||lockType.equals(LockType.X))) throw new UnsupportedOperationException("Context cannot be modified");
-        if(lockType == LockType.NL && !lockman.getLocks(transaction).isEmpty()){
+        if (readonly) {
+            throw new UnsupportedOperationException("readonly");
+        }
+        if (lockType == LockType.NL) {
             throw new InvalidLockException("Exception Lock");
         }
-        if(getExplicitLockType(transaction).equals(lockType))
+        if (lockman.getLockType(transaction, name).equals(lockType))
             throw new DuplicateLockRequestException("A lock is already held by the transaction");
 
-        if(parent != null){
+        if (parent != null) {
+            List<Lock> lockList = lockman.getLocks(transaction);
+            boolean compatible = true;
+
             LockType par = parent.getExplicitLockType(transaction);
-            if(!LockType.canBeParentLock(par,lockType)){
-                throw  new InvalidLockException("Exception Lock");
+            if (!LockType.canBeParentLock(par, lockType)) {
+                throw new InvalidLockException("Exception Lock");
             }
         }
-            lockman.acquire(transaction, name, lockType);
-            updateNumChild(transaction,lockType,parent);
+        lockman.acquire(transaction, name, lockType);
+        updateNumChild(transaction,lockType,parent);
     }
 
     /**
