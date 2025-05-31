@@ -90,11 +90,13 @@ public class ARIESRecoveryManager implements RecoveryManager {
      * @param transNum transaction being committed
      * @return LSN of the commit record
      */
+
     @Override
     public long commit(long transNum) {
         // TODO(proj5): implement
         return -1L;
     }
+
 
     /**
      * Called when a transaction is set to be aborted.
@@ -118,7 +120,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
         transactionTable.get(transNum).transaction.setStatus(Transaction.Status.ABORTING);
 
         transactionTable.get(transNum).lastLSN = currLSN;
-        
+
 
         return currLSN;
     }
@@ -138,7 +140,14 @@ public class ARIESRecoveryManager implements RecoveryManager {
     @Override
     public long end(long transNum) {
         // TODO(proj5): implement
-        return -1L;
+        if(transactionTable.get(transNum).transaction.getStatus() != Transaction.Status.ABORTING) return -1L;
+        rollbackToLSN(transNum,0);
+        long lastLSN = transactionTable.get(transNum).lastLSN;
+        transactionTable.get(transNum).transaction.setStatus(Transaction.Status.COMPLETE);
+        transactionTable.remove(transNum);
+        LogRecord endRecord = new EndTransactionLogRecord(transNum,lastLSN);
+        Long endLSN = logManager.appendToLog(endRecord);
+        return endLSN;
     }
 
     /**
@@ -166,6 +175,18 @@ public class ARIESRecoveryManager implements RecoveryManager {
         // back from the next record that hasn't yet been undone.
         long currentLSN = lastRecord.getUndoNextLSN().orElse(lastRecordLSN);
         // TODO(proj5) implement the rollback logic described above
+        while(currentLSN > LSN){
+
+            LogRecord currentRecord = logManager.fetchLogRecord(currentLSN);
+            if (currentRecord.isUndoable()){
+                LogRecord CLRLog = currentRecord.undo(transactionTable.get(transNum).lastLSN);
+                logManager.appendToLog(CLRLog);
+               transactionTable.get(transNum).lastLSN = CLRLog.getLSN();
+                CLRLog.redo(this,diskSpaceManager,bufferManager);
+            }
+            if(currentRecord.getPrevLSN().isPresent()) currentLSN = currentRecord.getPrevLSN().get();
+            else break;
+        }
     }
 
     /**
