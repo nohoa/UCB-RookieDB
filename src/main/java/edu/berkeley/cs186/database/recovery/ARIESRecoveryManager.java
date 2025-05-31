@@ -109,7 +109,18 @@ public class ARIESRecoveryManager implements RecoveryManager {
     @Override
     public long abort(long transNum) {
         // TODO(proj5): implement
-        return -1L;
+        long lastLSN = transactionTable.get(transNum).lastLSN;
+
+        LogRecord record = new AbortTransactionLogRecord(transNum,lastLSN);
+
+        long currLSN = logManager.appendToLog(record);
+
+        transactionTable.get(transNum).transaction.setStatus(Transaction.Status.ABORTING);
+
+        transactionTable.get(transNum).lastLSN = currLSN;
+        
+
+        return currLSN;
     }
 
     /**
