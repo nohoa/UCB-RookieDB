@@ -100,7 +100,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
 
         long currLSN = logManager.appendToLog(record);
 
-
         transactionTable.get(transNum).transaction.setStatus(Transaction.Status.COMMITTING);
 
         transactionTable.get(transNum).lastLSN = currLSN;
@@ -440,6 +439,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long savepointLSN = transactionEntry.getSavepoint(name);
 
         // TODO(proj5): implement
+        rollbackToLSN(transNum,savepointLSN);
         return;
     }
 
