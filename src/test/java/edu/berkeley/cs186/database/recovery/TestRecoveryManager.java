@@ -249,6 +249,7 @@ public class TestRecoveryManager {
         recoveryManager.logPageWrite(1L, pageNum, pageOffset, before, after);
         long commitLSN = recoveryManager.commit(1L);
 
+
         // lastLSN should be set to commit record LSN, status should be updated
         assertEquals(commitLSN, transactionTable.get(1L).lastLSN);
         assertEquals(Transaction.Status.COMMITTING, transactionTable.get(1L).transaction.getStatus());
@@ -330,16 +331,21 @@ public class TestRecoveryManager {
         LSNs[8] = recoveryManager.end(2L);
         LSNs[9] = recoveryManager.abort(1L);
 
+
+
         assertEquals(LSNs[9], transactionTable.get(1L).lastLSN);
         assertEquals(Transaction.Status.ABORTING, transactionTable.get(1L).transaction.getStatus());
 
         // 3. T1 ends after an abort, so it's changes should be rolled back.
+
         recoveryManager.end(1L); // 4 CLRs + END should be generated
+
+
 
         // Count number of each type of record in the log. Initialize all
         // counts to 0.
         int totalRecords, abort, commit, end, update, allocPart, undo;
-        totalRecords = abort = commit = end = update = allocPart = undo = 0;
+         totalRecords = abort = commit = end = update = allocPart = undo = 0;
 
         Iterator<LogRecord> logs = logManager.iterator();
         while (logs.hasNext()) {

@@ -93,8 +93,22 @@ public class ARIESRecoveryManager implements RecoveryManager {
 
     @Override
     public long commit(long transNum) {
-        // TODO(proj5): implement
-        return -1L;
+
+        long lastLSN = transactionTable.get(transNum).lastLSN;
+
+        LogRecord record = new CommitTransactionLogRecord(transNum,lastLSN);
+
+        long currLSN = logManager.appendToLog(record);
+
+
+        transactionTable.get(transNum).transaction.setStatus(Transaction.Status.COMMITTING);
+
+        transactionTable.get(transNum).lastLSN = currLSN;
+
+
+        logManager.flushToLSN(currLSN);
+
+        return currLSN;
     }
 
 
@@ -111,6 +125,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
     @Override
     public long abort(long transNum) {
         // TODO(proj5): implement
+
         long lastLSN = transactionTable.get(transNum).lastLSN;
 
         LogRecord record = new AbortTransactionLogRecord(transNum,lastLSN);
@@ -140,8 +155,9 @@ public class ARIESRecoveryManager implements RecoveryManager {
     @Override
     public long end(long transNum) {
         // TODO(proj5): implement
-        if(transactionTable.get(transNum).transaction.getStatus() != Transaction.Status.ABORTING) return -1L;
-        rollbackToLSN(transNum,0);
+        if(transactionTable.get(transNum).transaction.getStatus() == Transaction.Status.ABORTING) {
+            rollbackToLSN(transNum,0);
+        }
         long lastLSN = transactionTable.get(transNum).lastLSN;
         transactionTable.get(transNum).transaction.setStatus(Transaction.Status.COMPLETE);
         transactionTable.remove(transNum);
@@ -237,7 +253,18 @@ public class ARIESRecoveryManager implements RecoveryManager {
         assert (before.length == after.length);
         assert (before.length <= BufferManager.EFFECTIVE_PAGE_SIZE / 2);
         // TODO(proj5): implement
-        return -1L;
+        long prevLSN = transactionTable.get(transNum).lastLSN;
+        //System.out.println(prevLSN);;
+        LogRecord record = new UpdatePageLogRecord(transNum,pageNum,prevLSN,pageOffset,before,after);
+        long currLSN = logManager.appendToLog(record);
+        //System.out.println(currLSN);
+        transactionTable.get(transNum).lastLSN = currLSN;
+
+        if(!dirtyPageTable.containsKey(pageNum)){
+            dirtyPageTable.put(pageNum,currLSN);
+        }
+
+        return currLSN;
     }
 
     /**
