@@ -478,7 +478,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
             curr_page ++ ;
             chkptDPT.put(entries.getKey(),entries.getValue());
         }
-        
+
         int curr_trans = 0;
         for(Map.Entry<Long,TransactionTableEntry> transNum : transactionTable.entrySet()){
             if(!EndCheckpointLogRecord.fitsInOneRecord(curr_page,curr_trans+1)){
@@ -490,8 +490,8 @@ public class ARIESRecoveryManager implements RecoveryManager {
                 curr_trans = 0;
             }
             curr_trans ++;
-            Pair p1 = new Pair(transNum.getValue().transaction.getStatus(),transNum.getValue().lastLSN);
-            chkptTxnTable.put(transNum.getKey(),p1);
+            Pair transRecord = new Pair(transNum.getValue().transaction.getStatus(),transNum.getValue().lastLSN);
+            chkptTxnTable.put(transNum.getKey(),transRecord);
         }
 
         // Last end checkpoint record
@@ -604,6 +604,87 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long LSN = masterRecord.lastCheckpointLSN;
         // Set of transactions that have completed
         Set<Long> endedTransactions = new HashSet<>();
+        Iterator<LogRecord> currRecord = logManager.scanFrom(LSN);
+        while(currRecord.hasNext()){
+           LogRecord curr = currRecord.next();
+            if(curr.getTransNum().isPresent() ){
+                long currNo = curr.getTransNum().get();
+                if(!transactionTable.containsKey(currNo)) {
+                    Transaction newTrans = newTransaction.apply(curr.getTransNum().get());
+                    startTransaction(newTrans);
+                    TransactionTableEntry newEntry = new TransactionTableEntry(newTrans);
+                    transactionTable.put(currNo, newEntry);
+                }
+                transactionTable.get(currNo).lastLSN = curr.LSN;
+                TransactionTableEntry entry = transactionTable.get(currNo);
+                if(curr.getType() == LogType.ABORT_TRANSACTION) entry.transaction.setStatus(Transaction.Status.RECOVERY_ABORTING);
+               else if(curr.getType() == LogType.COMMIT_TRANSACTION) entry.transaction.setStatus(Transaction.Status.COMMITTING);
+               else if(curr.getType() == LogType.END_TRANSACTION){
+                    entry.transaction.cleanup();
+                    entry.transaction.setStatus(Transaction.Status.COMPLETE);
+                    transactionTable.remove(currNo);
+                    endedTransactions.add(currNo);
+                }
+
+               if(curr.getPageNum().isPresent()){
+                   if(curr.getType() == LogType.UPDATE_PAGE){
+                       dirtyPageTable.put(curr.getPageNum().get(),curr.LSN);
+                   }
+                   else if(curr.getType() == LogType.FREE_PAGE){
+                       dirtyPageTable.remove(curr.getPageNum().get());
+                   }
+               }
+            }
+            else if(curr.getType() == LogType.END_CHECKPOINT){
+                //System.out.println(curr.getTransactionTable());
+                dirtyPageTable.putAll(curr.getDirtyPageTable());
+                for( HashMap.Entry<Long, Pair<Transaction.Status, Long>> entry : curr.getTransactionTable().entrySet()){
+                    if(endedTransactions.contains(entry.getKey())) continue;
+                    if(!transactionTable.containsKey(entry.getKey())){
+                        Transaction newtrans = newTransaction.apply(entry.getKey());
+                        startTransaction(newtrans);
+                        TransactionTableEntry transactionTableEntry = new TransactionTableEntry(newtrans);
+                        transactionTableEntry.lastLSN = entry.getValue().getSecond();
+                        transactionTable.put(entry.getKey(),transactionTableEntry);
+                    }
+                    else {
+                        if(transactionTable.get(entry.getKey()).lastLSN < entry.getValue().getSecond()){
+                           transactionTable.get(entry.getKey()).lastLSN = entry.getValue().getSecond();
+                        }
+                    }
+                    if(transactionTable.get(entry.getKey()).transaction.getStatus() == Transaction.Status.RUNNING){
+                        if(entry.getValue().getFirst() != Transaction.Status.RUNNING){
+                            if(entry.getValue().getFirst() == Transaction.Status.ABORTING) transactionTable.get(entry.getKey()).transaction.setStatus(Transaction.Status.RECOVERY_ABORTING);
+                            else transactionTable.get(entry.getKey()).transaction.setStatus(entry.getValue().getFirst());
+                        }
+                    }
+                }
+            }
+
+        }
+        Map<Long, TransactionTableEntry> tempTrans = new ConcurrentHashMap<>();
+        Iterator<Map.Entry<Long, TransactionTableEntry> > iterator = transactionTable.entrySet().iterator();
+        while(iterator.hasNext()){
+            Map.Entry<Long, TransactionTableEntry> entry  = iterator.next();
+
+            if(entry.getValue().transaction.getStatus() == Transaction.Status.COMMITTING){
+                entry.getValue().transaction.cleanup();
+                entry.getValue().transaction.setStatus(Transaction.Status.COMPLETE);
+                LogRecord endRecord = new EndTransactionLogRecord(entry.getKey(),entry.getValue().lastLSN);
+                entry.getValue().lastLSN = logManager.appendToLog(endRecord);
+            }
+            else if(entry.getValue().transaction.getStatus() == Transaction.Status.RUNNING) {
+                entry.getValue().transaction.setStatus(Transaction.Status.RECOVERY_ABORTING);
+                LogRecord abortedRecord = new AbortTransactionLogRecord(entry.getKey(),entry.getValue().lastLSN);
+                entry.getValue().lastLSN = logManager.appendToLog(abortedRecord);
+                tempTrans.put(entry.getKey(),entry.getValue());
+            }
+            else {
+                tempTrans.put(entry.getKey(),entry.getValue());
+            }
+        }
+        transactionTable.clear();
+        transactionTable.putAll(tempTrans);
         // TODO(proj5): implement
         return;
     }

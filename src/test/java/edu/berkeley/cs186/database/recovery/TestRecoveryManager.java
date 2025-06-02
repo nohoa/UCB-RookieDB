@@ -824,6 +824,7 @@ public class TestRecoveryManager {
 
         recoveryManager.restartAnalysis();
 
+
         // check log
         Iterator<LogRecord> logs = logManager.scanFrom(20000L);
         assertEquals(new EndTransactionLogRecord(2L, LSNs.get(8)), logs.next());
@@ -831,6 +832,7 @@ public class TestRecoveryManager {
         assertEquals(new AbortTransactionLogRecord(4L, 0), abortRecord);
         assertFalse(logs.hasNext());
         assertEquals(19999L, logManager.getFlushedLSN());
+
 
         // T1 and T2 should have ended, and been removed
         assertFalse(transactionTable.containsKey(1l));
