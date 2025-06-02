@@ -627,16 +627,25 @@ public class ARIESRecoveryManager implements RecoveryManager {
                 }
 
                if(curr.getPageNum().isPresent()){
-                   if(curr.getType() == LogType.UPDATE_PAGE){
-                       dirtyPageTable.put(curr.getPageNum().get(),curr.LSN);
+                   if(curr.getType() == LogType.UPDATE_PAGE || curr.getType() == LogType.UNDO_UPDATE_PAGE){
+                       long currLSN ;
+
+                       if(dirtyPageTable.containsKey(curr.getPageNum().get())){
+                           currLSN = dirtyPageTable.get(curr.getPageNum().get());
+                       }
+                       else currLSN = 999999999;
+
+                       if(currLSN >= curr.getLSN()){
+                           dirtyPageTable.put(curr.getPageNum().get(),curr.getLSN());
+                       }
                    }
-                   else if(curr.getType() == LogType.FREE_PAGE){
+                   else if(curr.getType() == LogType.FREE_PAGE || curr.getType() == LogType.UNDO_ALLOC_PAGE){
+                       flushToLSN(curr.getLSN());
                        dirtyPageTable.remove(curr.getPageNum().get());
                    }
                }
             }
             else if(curr.getType() == LogType.END_CHECKPOINT){
-                //System.out.println(curr.getTransactionTable());
                 dirtyPageTable.putAll(curr.getDirtyPageTable());
                 for( HashMap.Entry<Long, Pair<Transaction.Status, Long>> entry : curr.getTransactionTable().entrySet()){
                     if(endedTransactions.contains(entry.getKey())) continue;
@@ -703,7 +712,35 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     void restartRedo() {
         // TODO(proj5): implement
-        return;
+        long lowestLSN = 999999999;
+        for(HashMap.Entry<Long,Long> entry : dirtyPageTable.entrySet()){
+            if(entry.getValue() < lowestLSN){
+                lowestLSN = entry.getValue();
+            }
+        }
+        Iterator<LogRecord> iterator = logManager.scanFrom(lowestLSN);
+        while (iterator.hasNext()){
+            LogRecord curr = iterator.next();
+            if(!curr.isRedoable()) continue;
+            LogType currType = curr.getType();
+            if(currType == LogType.ALLOC_PART || currType == LogType.UNDO_ALLOC_PART ||
+                    currType == LogType.UNDO_FREE_PART || currType == LogType.FREE_PART ||
+                    currType == LogType.ALLOC_PAGE ||currType == LogType.UNDO_FREE_PAGE ){
+                    curr.redo(this,diskSpaceManager,bufferManager);
+            }
+            else if(currType == LogType.UPDATE_PAGE || currType == LogType.UNDO_UPDATE_PAGE ||
+            currType == LogType.UNDO_ALLOC_PAGE || currType == LogType.FREE_PAGE){
+                if(!dirtyPageTable.containsKey(curr.getPageNum().get())) continue;
+                if(curr.getLSN() < dirtyPageTable.get(curr.getPageNum().get())) continue;
+                Page page = bufferManager.fetchPage(new DummyLockContext(), curr.getPageNum().get());
+                try{
+                    if(page.getPageLSN()  < curr.getLSN()) curr.redo(this,diskSpaceManager,bufferManager);
+                }
+                finally {
+                    page.unpin();
+                }
+            }
+        }
     }
 
     /**
@@ -721,7 +758,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     void restartUndo() {
         // TODO(proj5): implement
-        return;
     }
 
     /**
