@@ -8,6 +8,7 @@ import edu.berkeley.cs186.database.memory.BufferManager;
 import edu.berkeley.cs186.database.memory.Page;
 import edu.berkeley.cs186.database.recovery.records.*;
 
+import java.security.Key;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -758,6 +759,40 @@ public class ARIESRecoveryManager implements RecoveryManager {
      */
     void restartUndo() {
         // TODO(proj5): implement
+        PriorityQueue<Pair<Long, Long> > currLSN =
+                new PriorityQueue<>(new PairFirstReverseComparator());
+        for(Map.Entry<Long,TransactionTableEntry> entry : transactionTable.entrySet()){
+            Pair pr = new Pair(entry.getValue().lastLSN,entry.getKey());
+            currLSN.add(pr);
+        }
+        while(!currLSN.isEmpty()){
+            Pair<Long,Long> curr = currLSN.poll();
+            Long LSN = curr.getFirst();
+            Long recordNo = curr.getSecond();
+            LogRecord currRecord = logManager.fetchLogRecord(LSN);
+            //System.out.println(currRecord);
+            if(currRecord.isUndoable()){
+               LogRecord redoLog = currRecord.undo(transactionTable.get(recordNo).lastLSN);
+               transactionTable.get(recordNo).lastLSN = logManager.appendToLog(redoLog);
+               redoLog.redo(this,diskSpaceManager,bufferManager);
+            }
+            if(currRecord.getUndoNextLSN().isPresent()){
+                LSN = currRecord.getUndoNextLSN().get();
+            }
+            else {
+                LSN = currRecord.getPrevLSN().get();
+            }
+            if(LSN == 0){
+                LogRecord completeRecord = new EndTransactionLogRecord(recordNo,transactionTable.get(recordNo).lastLSN);
+                transactionTable.get(recordNo).lastLSN = logManager.appendToLog(completeRecord);
+                transactionTable.get(recordNo).transaction.cleanup();
+                transactionTable.get(recordNo).transaction.setStatus(Transaction.Status.COMPLETE);
+                transactionTable.remove(recordNo);
+            }
+            else {
+                currLSN.add(new Pair<>(LSN,recordNo));
+            }
+        }
     }
 
     /**
