@@ -160,9 +160,10 @@ public class ARIESRecoveryManager implements RecoveryManager {
         }
         long lastLSN = transactionTable.get(transNum).lastLSN;
         transactionTable.get(transNum).transaction.setStatus(Transaction.Status.COMPLETE);
-        transactionTable.remove(transNum);
         LogRecord endRecord = new EndTransactionLogRecord(transNum,lastLSN);
         Long endLSN = logManager.appendToLog(endRecord);
+        transactionTable.get(transNum).lastLSN = endLSN;
+        transactionTable.remove(transNum);
         return endLSN;
     }
 
@@ -254,10 +255,9 @@ public class ARIESRecoveryManager implements RecoveryManager {
         assert (before.length <= BufferManager.EFFECTIVE_PAGE_SIZE / 2);
         // TODO(proj5): implement
         long prevLSN = transactionTable.get(transNum).lastLSN;
-        //System.out.println(prevLSN);;
         LogRecord record = new UpdatePageLogRecord(transNum,pageNum,prevLSN,pageOffset,before,after);
         long currLSN = logManager.appendToLog(record);
-        //System.out.println(currLSN);
+
         transactionTable.get(transNum).lastLSN = currLSN;
 
         if(!dirtyPageTable.containsKey(pageNum)){
@@ -770,7 +770,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
             Long LSN = curr.getFirst();
             Long recordNo = curr.getSecond();
             LogRecord currRecord = logManager.fetchLogRecord(LSN);
-            //System.out.println(currRecord);
+
             if(currRecord.isUndoable()){
                LogRecord redoLog = currRecord.undo(transactionTable.get(recordNo).lastLSN);
                transactionTable.get(recordNo).lastLSN = logManager.appendToLog(redoLog);
