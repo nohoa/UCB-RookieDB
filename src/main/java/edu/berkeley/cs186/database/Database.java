@@ -174,6 +174,7 @@ public class Database implements AutoCloseable {
     public Database(String fileDir, int numMemoryPages, LockManager lockManager,
                     EvictionPolicy policy, boolean useRecoveryManager) {
         boolean initialized = setupDirectory(fileDir);
+        
 
         numTransactions = 0;
         this.numMemoryPages = numMemoryPages;

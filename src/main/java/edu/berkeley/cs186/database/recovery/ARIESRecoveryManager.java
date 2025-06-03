@@ -257,7 +257,6 @@ public class ARIESRecoveryManager implements RecoveryManager {
         long prevLSN = transactionTable.get(transNum).lastLSN;
         LogRecord record = new UpdatePageLogRecord(transNum,pageNum,prevLSN,pageOffset,before,after);
         long currLSN = logManager.appendToLog(record);
-
         transactionTable.get(transNum).lastLSN = currLSN;
 
         if(!dirtyPageTable.containsKey(pageNum)){
@@ -770,7 +769,7 @@ public class ARIESRecoveryManager implements RecoveryManager {
             Long LSN = curr.getFirst();
             Long recordNo = curr.getSecond();
             LogRecord currRecord = logManager.fetchLogRecord(LSN);
-
+            //System.out.println(currRecord);
             if(currRecord.isUndoable()){
                LogRecord redoLog = currRecord.undo(transactionTable.get(recordNo).lastLSN);
                transactionTable.get(recordNo).lastLSN = logManager.appendToLog(redoLog);
